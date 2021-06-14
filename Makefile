@@ -1,4 +1,4 @@
-CFLAGS=-std-c11 -g -static
+CFLAGS=-std=c11 -g -static
 
 9cc: 9cc.c
 
