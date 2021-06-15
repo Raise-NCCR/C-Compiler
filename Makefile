@@ -1,8 +1,8 @@
 CFLAGS=-std=c11 -g -static
 
-9cc: 9cc.c
+main: codegen.c parse.c main.c
 
-test: 9cc
+test: main
 	bash test.sh
 
 clean:
