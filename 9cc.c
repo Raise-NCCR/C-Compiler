@@ -49,6 +49,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *expr();
 Node *mul();
+Node *unary();
 Node *primary();
 void gen(Node *node);
 void error_at(char *loc, char *fmt, ...);
@@ -179,17 +180,26 @@ Node *expr()
 
 Node *mul()
 {
-    Node *node = primary();
+    Node *node = unary();
 
     for (;;)
     {
         if (consume('*'))
-            node = new_node(ND_MUL, node, primary());
+            node = new_node(ND_MUL, node, unary());
         else if (consume('/'))
-            node = new_node(ND_DIV, node, primary());
+            node = new_node(ND_DIV, node, unary());
         else
             return node;
     }
+}
+
+Node *unary()
+{
+    if (consume('+'))
+        return primary();
+    else if (consume('-'))
+        return new_node(ND_SUB, new_node_num(0), primary());
+    return primary();
 }
 
 Node *primary()
