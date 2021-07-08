@@ -30,6 +30,13 @@ Token *tokenize()
             continue;
         }
 
+        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6]))
+        {
+            cur = new_token(TK_RETURN, cur, p, 6);
+            p += 6;
+            continue;
+        }
+
         if (startswith(p, "==") || startswith(p, "!=") ||
             startswith(p, ">=") || startswith(p, "<="))
         {
@@ -38,7 +45,7 @@ Token *tokenize()
             continue;
         }
 
-        if (strchr("+-*/()<>", *p))
+        if (strchr("+-*/()<>;=", *p))
         {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
@@ -53,13 +60,23 @@ Token *tokenize()
             continue;
         }
 
+        if (isalpha(*p))
+        {
+            cur = new_token(TK_IDENT, cur, p, 0);
+            while (is_alnum(*p))
+            {
+                cur->len++;
+                p++;
+            }
+            continue;
+        }
+
         error_at(p, "トークンにできません");
     }
 
     new_token(TK_EOF, cur, p, 0);
     return head.next;
 }
-
 
 void error_at(char *loc, char *fmt, ...)
 {
@@ -85,12 +102,26 @@ bool consume(char *op)
     return true;
 }
 
+bool consume_kind(TokenKind kind)
+{
+    return token->kind == kind;
+}
+
+Token *consume_ident()
+{
+    Token *tok = token;
+    if (tok->kind != TK_IDENT)
+        return NULL;
+    token = token->next;
+    return tok;
+}
+
 void expect(char *op)
 {
     if (token->kind != TK_RESERVED ||
         strlen(op) != token->len ||
         memcmp(token->str, op, token->len))
-        error_at(token->str, "'%c'ではありません", op);
+        error_at(token->str, "'%s'ではありません", op);
     token = token->next;
 }
 
@@ -106,4 +137,19 @@ int expect_number()
 bool at_eof()
 {
     return token->kind == TK_EOF;
+}
+
+LVar *find_lvar(Token *tok)
+{
+    for (LVar *var = locals; var; var = var->next)
+    {
+        if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+            return var;
+    }
+    return NULL;
+}
+
+int is_alnum(char c)
+{
+    return (isalpha(c) || isdigit(c) || c == '_');
 }
