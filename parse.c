@@ -37,6 +37,34 @@ Token *tokenize()
             continue;
         }
 
+        if (strncmp(p, "if", 2) == 0 && !is_alnum(p[2]))
+        {
+            cur = new_token(TK_IF, cur, p, 2);
+            p += 2;
+            continue;
+        }
+
+        if (strncmp(p, "else", 4) == 0 && !is_alnum(p[4]))
+        {
+            cur = new_token(TK_ELSE, cur, p, 4);
+            p += 4;
+            continue;
+        }
+
+        if (strncmp(p, "while", 5) == 0 && !is_alnum(p[5]))
+        {
+            cur = new_token(TK_WHILE, cur, p, 5);
+            p += 5;
+            continue;
+        }
+
+        if (strncmp(p, "for", 3) == 0 && !is_alnum(p[3]))
+        {
+            cur = new_token(TK_FOR, cur, p, 3);
+            p += 3;
+            continue;
+        }
+
         if (startswith(p, "==") || startswith(p, "!=") ||
             startswith(p, ">=") || startswith(p, "<="))
         {
@@ -104,7 +132,12 @@ bool consume(char *op)
 
 bool consume_kind(TokenKind kind)
 {
-    return token->kind == kind;
+    if (token->kind == kind)
+    {
+        token = token->next;
+        return true;
+    }
+    return false;
 }
 
 Token *consume_ident()

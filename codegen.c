@@ -1,5 +1,7 @@
 #include "./9cc.h"
 
+static int jump_number = 0;
+
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs)
 {
     Node *node = calloc(1, sizeof(Node));
@@ -34,8 +36,52 @@ Node *stmt()
     {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
-        token = token->next;
         node->lhs = expr();
+    }
+    else if (consume_kind(TK_IF))
+    {
+        expect("(");
+        node = expr();
+        expect(")");
+        node = new_node(ND_IF, node, stmt());
+        for (;;)
+        {
+            if (consume_kind(TK_ELSE))
+                node = new_node(ND_ELSE, node, stmt());
+            else
+                return node;
+        }
+    }
+    else if (consume_kind(TK_WHILE))
+    {
+        expect("(");
+        node = expr();
+        expect(")");
+        node = new_node(ND_WHILE, node, stmt());
+        return node;
+    }
+    else if (consume_kind(TK_FOR))
+    {
+        expect("(");
+        int flag = 0;
+        for (;;)
+        {
+
+            if (consume(";"))
+                continue;
+            else if (consume(")"))
+            {
+                node = new_node(ND_FOR, node, stmt());
+                return node;
+            }
+            else
+            {
+                if (!flag++)
+                    node = expr();
+                else
+                    node = new_node(ND_FOR, node, expr());
+            }
+        }
     }
     else
     {
@@ -209,6 +255,64 @@ void gen(Node *node)
         printf("    mov rsp, rbp\n");
         printf("    pop rbp\n");
         printf("    ret\n");
+        return;
+    case ND_IF:
+        gen(node->lhs);
+
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je .Lend%d\n", jump_number);
+
+        gen(node->rhs);
+
+        printf(".Lend%d:\n", jump_number++);
+        return;
+    case ND_ELSE:
+        gen(node->lhs->lhs);
+
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je .Lelse%d\n", jump_number);
+
+        gen(node->lhs->rhs);
+
+        printf("    jmp .Lend%d\n", jump_number);
+        printf(".Lelse%d:\n", jump_number);
+
+        gen(node->rhs);
+
+        printf(".Lend%d:\n", jump_number++);
+        return;
+    case ND_WHILE:
+        printf(".Lbegin%d:\n", jump_number);
+
+        gen(node->lhs);
+
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je .Lend%d\n", jump_number);
+
+        gen(node->rhs);
+
+        printf("    jmp .Lbegin%d\n", jump_number);
+        printf(".Lend%d:\n", jump_number++);
+        return;
+    case ND_FOR:
+        gen(node->lhs->lhs->lhs);
+
+        printf(".Lbegin%d:\n", jump_number);
+
+        gen(node->lhs->lhs->rhs);
+
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je .Lend%d\n", jump_number);
+
+        gen(node->rhs);
+        gen(node->lhs->rhs);
+
+        printf("    jmp .Lbegin%d\n", jump_number);
+        printf(".Lend%d:\n", jump_number++);
         return;
     }
 
