@@ -4,3 +4,5 @@ tmp*
 a.out
 9cc
 main
+*.s
+test.c

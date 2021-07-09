@@ -1,6 +1,9 @@
 #include "./9cc.h"
 
 static int jump_number = 0;
+static int arg_count = 0;
+static char *arg_register[] = {"rdi", "rsi", "rdx", "rcx", "r8"};
+static LVar *func;
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs)
 {
@@ -38,7 +41,7 @@ Node *stmt()
         node->kind = ND_RETURN;
         node->lhs = expr();
     }
-    else if(consume("{"))
+    else if (consume("{"))
     {
         node = stmt();
         for (;;)
@@ -193,18 +196,26 @@ Node *unary()
 
 Node *primary()
 {
-    if (consume("("))
-    {
-        Node *node = expr();
-        expect(")");
-        return node;
-    }
-
     Token *tok = consume_ident();
     if (tok)
     {
         Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LVAR;
+        if (consume("("))
+        {
+            node->kind = ND_FUNC;
+            int flag = 0;
+            for (;;)
+            {
+                if (consume(","))
+                    continue;
+                else if (consume(")"))
+                    break ;
+                else
+                    node = new_node(ND_FUNC, node, primary());
+            }
+        }
+        else
+            node->kind = ND_LVAR;
 
         LVar *lvar = find_lvar(tok);
         if (lvar)
@@ -224,6 +235,13 @@ Node *primary()
         return node;
     }
 
+    if (consume("("))
+    {
+        Node *node = expr();
+        expect(")");
+        return node;
+    }
+
     return new_node_num(expect_number());
 }
 
@@ -235,6 +253,35 @@ void gen_lval(Node *node)
     printf("    mov rax, rbp\n");
     printf("    sub rax, %d\n", node->offset);
     printf("    push rax\n");
+}
+
+char *find_func(Node *node)
+{
+    for (LVar *var = locals; var; var = var->next)
+    {
+        if (var->offset == node->offset)
+        {
+            char *func_name = (char *)calloc(var->len + 1, 1);
+            return strncpy(func_name, var->name, var->len);
+        }
+    }
+    return NULL;
+}
+
+void gen_func(Node *node)
+{
+    if (node->rhs == NULL)
+        return ;
+    if (node->lhs->lhs == NULL)
+    {
+        gen(node->rhs);
+        printf("    pop %s\n", arg_register[arg_count++]);
+        return ;
+    }
+    gen(node->rhs);
+    printf("    pop %s\n", arg_register[arg_count++]);
+    gen_func(node->lhs);
+    return ;
 }
 
 void gen(Node *node)
@@ -249,6 +296,11 @@ void gen(Node *node)
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
+        return;
+    case ND_FUNC:
+        arg_count = 0;
+        gen_func(node);
+        printf("    call %s\n", find_func(node));
         return;
     case ND_ASSIGN:
         gen_lval(node->lhs);
