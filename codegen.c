@@ -38,6 +38,17 @@ Node *stmt()
         node->kind = ND_RETURN;
         node->lhs = expr();
     }
+    else if(consume("{"))
+    {
+        node = stmt();
+        for (;;)
+        {
+            if (consume("}"))
+                return node;
+            else
+                node = new_node(ND_BLOCK, node, stmt());
+        }
+    }
     else if (consume_kind(TK_IF))
     {
         expect("(");
@@ -313,6 +324,13 @@ void gen(Node *node)
 
         printf("    jmp .Lbegin%d\n", jump_number);
         printf(".Lend%d:\n", jump_number++);
+        return;
+    case ND_BLOCK:
+        gen(node->lhs);
+
+        printf("    pop rax\n");
+
+        gen(node->rhs);
         return;
     }
 

@@ -25,7 +25,8 @@ typedef enum
     ND_IF,
     ND_ELSE,
     ND_WHILE,
-    ND_FOR
+    ND_FOR,
+    ND_BLOCK
 } NodeKind;
 
 typedef struct Node Node;

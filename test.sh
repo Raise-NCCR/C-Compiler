@@ -60,4 +60,6 @@ assert 5 'a1 = 0; while (a1 != 5) a1 = a1 + 1; return a1;'
 
 assert 5 'a2 = 0; for (a1 = 0; a1 < 5; a1 = a1 + 1) a2 = a2 + 1; return a2;'
 
+assert 6 'a2 = 0; for (a1 = 0; a1 < 4; a1 = a1 + 1) {a2 = a1+ a2; a1 = a1 - 1; a1 = a1 + 1;} return a2;'
+
 echo OK
