@@ -28,7 +28,7 @@ typedef enum
     ND_FOR,
     ND_BLOCK,
     ND_FUNC,
-    ND_ARG
+    ND_DECLARE
 } NodeKind;
 
 typedef struct Node Node;
@@ -38,6 +38,7 @@ struct Node
     NodeKind kind;
     Node *lhs;
     Node *rhs;
+    char *func_name;
     int val;
     int offset;
 };
@@ -98,6 +99,7 @@ Node *primary();
 void gen(Node *node);
 void error_at(char *loc, char *fmt, ...);
 bool consume(char *op);
+bool judge(char *op);
 bool consume_kind(TokenKind kind);
 Token *consume_ident();
 void expect(char *op);

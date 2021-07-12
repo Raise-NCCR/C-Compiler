@@ -2,6 +2,7 @@
 
 static int jump_number = 0;
 static int arg_count = 0;
+static bool block = false;
 static char *arg_register[] = {"rdi", "rsi", "rdx", "rcx", "r8"};
 static LVar *func;
 
@@ -47,7 +48,10 @@ Node *stmt()
         for (;;)
         {
             if (consume("}"))
+            {
+                block = true;
                 return node;
+            }
             else
                 node = new_node(ND_BLOCK, node, stmt());
         }
@@ -103,7 +107,10 @@ Node *stmt()
     }
 
     if (!consume(";"))
-        error_at(token->str, "';'ではないトークンです");
+    {
+        if (!block)
+            error_at(token->str, "';'ではないトークンです");
+    }
     return node;
 }
 
@@ -203,13 +210,12 @@ Node *primary()
         if (consume("("))
         {
             node->kind = ND_FUNC;
-            int flag = 0;
             for (;;)
             {
                 if (consume(","))
                     continue;
                 else if (consume(")"))
-                    break ;
+                    break;
                 else
                     node = new_node(ND_FUNC, node, primary());
             }
@@ -232,6 +238,12 @@ Node *primary()
             node->offset = lvar->offset;
             locals = lvar;
         }
+
+        if (judge("{"))
+        {
+            node = new_node(ND_DECLARE, node, stmt());
+            node->offset = lvar->offset;
+        }
         return node;
     }
 
@@ -245,7 +257,7 @@ Node *primary()
     return new_node_num(expect_number());
 }
 
-void gen_lval(Node *node)
+void gen_lvar(Node *node)
 {
     if (node->kind != ND_LVAR)
         perror("代入の左辺値が変数ではありません");
@@ -271,17 +283,28 @@ char *find_func(Node *node)
 void gen_func(Node *node)
 {
     if (node->rhs == NULL)
-        return ;
+        return;
     if (node->lhs->lhs == NULL)
     {
         gen(node->rhs);
         printf("    pop %s\n", arg_register[arg_count++]);
-        return ;
+        return;
     }
+    gen_func(node->lhs);
     gen(node->rhs);
     printf("    pop %s\n", arg_register[arg_count++]);
-    gen_func(node->lhs);
-    return ;
+    return;
+}
+
+void declare_func(Node *node)
+{
+    if (node->rhs == NULL || node->lhs == NULL)
+        return;
+    declare_func(node->lhs);
+    gen_lvar(node->rhs);
+    printf("    pop rax\n");
+    printf("    mov [rax], %s\n", arg_register[arg_count++]);
+    return;
 }
 
 void gen(Node *node)
@@ -292,10 +315,22 @@ void gen(Node *node)
         printf("    push %d\n", node->val);
         return;
     case ND_LVAR:
-        gen_lval(node);
+        gen_lvar(node);
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
+        return;
+    case ND_DECLARE:
+        arg_count = 0;
+        printf("%s:\n", find_func(node));
+        printf("    push rbp\n");
+        printf("    mov rbp, rsp\n");
+        printf("    sub rsp, 208\n");
+        declare_func(node->lhs);
+        gen(node->rhs);
+        printf("    mov rsp, rbp\n");
+        printf("    pop rbp\n");
+        printf("    ret\n");
         return;
     case ND_FUNC:
         arg_count = 0;
@@ -303,7 +338,7 @@ void gen(Node *node)
         printf("    call %s\n", find_func(node));
         return;
     case ND_ASSIGN:
-        gen_lval(node->lhs);
+        gen_lvar(node->lhs);
         gen(node->rhs);
 
         printf("    pop rdi\n");

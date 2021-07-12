@@ -8,7 +8,7 @@ OBJS=$(SRCS:.c=.o)
 $(OBJS): 9cc.h
 
 test: 9cc
-	bash test.sh
+	bash test2.sh
 
 clean:
 	rm -rf 9cc *.o *~ tmp*

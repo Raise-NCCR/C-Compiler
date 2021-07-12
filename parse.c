@@ -24,7 +24,7 @@ Token *tokenize()
 
     while (*p)
     {
-        if (isspace(*p))
+        if (isspace(*p) || *p == '\n')
         {
             p++;
             continue;
@@ -127,6 +127,15 @@ bool consume(char *op)
         memcmp(token->str, op, token->len))
         return false;
     token = token->next;
+    return true;
+}
+
+bool judge(char *op)
+{
+    if (token->kind != TK_RESERVED ||
+        strlen(op) != token->len ||
+        memcmp(token->str, op, token->len))
+        return false;
     return true;
 }
 
