@@ -309,18 +309,21 @@ void declare_func(Node *node)
 
 void gen(Node *node)
 {
-    switch (node->kind)
+    if (node->kind == ND_NUM)
     {
-    case ND_NUM:
         printf("    push %d\n", node->val);
         return;
-    case ND_LVAR:
+    }
+    if (node->kind == ND_LVAR)
+    {
         gen_lvar(node);
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;
-    case ND_DECLARE:
+    }
+    if (node->kind == ND_DECLARE)
+    {
         arg_count = 0;
         printf("%s:\n", find_func(node));
         printf("    push rbp\n");
@@ -332,12 +335,16 @@ void gen(Node *node)
         printf("    pop rbp\n");
         printf("    ret\n");
         return;
-    case ND_FUNC:
+    }
+    if (node->kind == ND_FUNC)
+    {
         arg_count = 0;
         gen_func(node);
         printf("    call %s\n", find_func(node));
         return;
-    case ND_ASSIGN:
+    }
+    if (node->kind == ND_ASSIGN)
+    {
         gen_lvar(node->lhs);
         gen(node->rhs);
 
@@ -346,7 +353,9 @@ void gen(Node *node)
         printf("    mov [rax], rdi\n");
         printf("    push rdi\n");
         return;
-    case ND_RETURN:
+    }
+    if (node->kind == ND_RETURN)
+    {
         gen(node->lhs);
 
         printf("    pop rax\n");
@@ -354,65 +363,83 @@ void gen(Node *node)
         printf("    pop rbp\n");
         printf("    ret\n");
         return;
-    case ND_IF:
+    }
+    if (node->kind == ND_IF)
+    {
+        int num = jump_number;
+        jump_number++;
         gen(node->lhs);
 
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", jump_number);
+        printf("    je .Lend%d\n", num);
 
         gen(node->rhs);
 
-        printf(".Lend%d:\n", jump_number++);
+        printf(".Lend%d:\n", num++);
         return;
-    case ND_ELSE:
+    }
+    if (node->kind == ND_ELSE)
+    {
+        int num = jump_number;
+        jump_number++;
         gen(node->lhs->lhs);
 
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lelse%d\n", jump_number);
+        printf("    je .Lelse%d\n", num);
 
         gen(node->lhs->rhs);
 
-        printf("    jmp .Lend%d\n", jump_number);
-        printf(".Lelse%d:\n", jump_number);
+        printf("    jmp .Lend%d\n", num);
+        printf(".Lelse%d:\n", num);
 
         gen(node->rhs);
 
-        printf(".Lend%d:\n", jump_number++);
+        printf(".Lend%d:\n", num++);
         return;
-    case ND_WHILE:
-        printf(".Lbegin%d:\n", jump_number);
+    }
+    if (node->kind == ND_WHILE)
+    {
+        int num = jump_number;
+        jump_number++;
+        printf(".Lbegin%d:\n", num);
 
         gen(node->lhs);
 
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", jump_number);
+        printf("    je .Lend%d\n", num);
 
         gen(node->rhs);
 
-        printf("    jmp .Lbegin%d\n", jump_number);
-        printf(".Lend%d:\n", jump_number++);
+        printf("    jmp .Lbegin%d\n", num);
+        printf(".Lend%d:\n", num++);
         return;
-    case ND_FOR:
+    }
+    if (node->kind == ND_FOR)
+    {
+        int num = jump_number;
+        jump_number++;
         gen(node->lhs->lhs->lhs);
 
-        printf(".Lbegin%d:\n", jump_number);
+        printf(".Lbegin%d:\n", num);
 
         gen(node->lhs->lhs->rhs);
 
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", jump_number);
+        printf("    je .Lend%d\n", num);
 
         gen(node->rhs);
         gen(node->lhs->rhs);
 
-        printf("    jmp .Lbegin%d\n", jump_number);
-        printf(".Lend%d:\n", jump_number++);
+        printf("    jmp .Lbegin%d\n", num);
+        printf(".Lend%d:\n", num++);
         return;
-    case ND_BLOCK:
+    }
+    if (node->kind == ND_BLOCK)
+    {
         gen(node->lhs);
 
         printf("    pop rax\n");
@@ -427,41 +454,46 @@ void gen(Node *node)
     printf("    pop rdi\n");
     printf("    pop rax\n");
 
-    switch (node->kind)
+    if (node->kind == ND_EQU)
     {
-    case ND_EQU:
         printf("    cmp rax, rdi\n");
         printf("    sete al\n");
         printf("    movzb rax, al\n");
-        break;
-    case ND_NEQ:
+    }
+    if (node->kind == ND_NEQ)
+    {
         printf("    cmp rax, rdi\n");
         printf("    setne al\n");
         printf("    movzb rax, al\n");
-        break;
-    case ND_LES:
+    }
+    if (node->kind == ND_LES)
+    {
         printf("    cmp rax, rdi\n");
         printf("    setl al\n");
         printf("    movzb rax, al\n");
-        break;
-    case ND_LEQ:
+    }
+    if (node->kind == ND_LEQ)
+    {
         printf("    cmp rax, rdi\n");
         printf("    setle al\n");
         printf("    movzb rax, al\n");
-        break;
-    case ND_ADD:
+    }
+    if (node->kind == ND_ADD)
+    {
         printf("    add rax, rdi\n");
-        break;
-    case ND_SUB:
+    }
+    if (node->kind == ND_SUB)
+    {
         printf("    sub rax, rdi\n");
-        break;
-    case ND_MUL:
+    }
+    if (node->kind == ND_MUL)
+    {
         printf("    imul rax, rdi\n");
-        break;
-    case ND_DIV:
+    }
+    if (node->kind == ND_DIV)
+    {
         printf("    cqo\n");
         printf("    idiv rdi\n");
-        break;
     }
 
     printf("    push rax\n");
