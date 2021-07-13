@@ -86,9 +86,17 @@ Node *stmt()
         {
 
             if (consume(";"))
+            {
+                if (!flag++)
+                    node = NULL;
+                else
+                    node = new_node(ND_FOR, node, NULL);
                 continue;
+            }
             else if (consume(")"))
             {
+                if (!flag++)
+                    node = NULL;
                 node = new_node(ND_FOR, node, stmt());
                 return node;
             }
@@ -98,6 +106,7 @@ Node *stmt()
                     node = expr();
                 else
                     node = new_node(ND_FOR, node, expr());
+                consume(";");
             }
         }
     }
@@ -307,6 +316,32 @@ void declare_func(Node *node)
     return;
 }
 
+bool valid(Node *node, int floor, ...)
+{
+    va_list ap;
+    va_start(ap, floor);
+
+    for (int i = 0; i < floor; i++)
+    {
+        char *input = va_arg(ap, char*);
+        if (strncmp(input, "lhs", 3) == 0)
+        {
+            if (node->lhs)
+                node = node->lhs;
+            else
+                return false;
+        }
+        else if (strncmp(input, "rhs", 3) == 0)
+        {
+            if (node->rhs)
+                node = node->rhs;
+            else
+                return false;
+        }
+    }
+    return true;
+}
+
 void gen(Node *node)
 {
     if (node->kind == ND_NUM)
@@ -421,18 +456,24 @@ void gen(Node *node)
     {
         int num = jump_number;
         jump_number++;
-        gen(node->lhs->lhs->lhs);
+
+        if (valid(node, 3, "lhs", "lhs", "lhs"))
+            gen(node->lhs->lhs->lhs);
 
         printf(".Lbegin%d:\n", num);
 
-        gen(node->lhs->lhs->rhs);
+        if (valid(node, 3, "lhs", "lhs", "rhs"))
+        {
+            gen(node->lhs->lhs->rhs);
 
-        printf("    pop rax\n");
-        printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", num);
+            printf("    pop rax\n");
+            printf("    cmp rax, 0\n");
+            printf("    je .Lend%d\n", num);
+        }
 
         gen(node->rhs);
-        gen(node->lhs->rhs);
+        if (valid(node, 2, "lhs", "rhs"))
+            gen(node->lhs->rhs);
 
         printf("    jmp .Lbegin%d\n", num);
         printf(".Lend%d:\n", num++);
