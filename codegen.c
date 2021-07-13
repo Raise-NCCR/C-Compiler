@@ -203,10 +203,15 @@ Node *mul()
 
 Node *unary()
 {
+    Node *node;
     if (consume("+"))
         return primary();
     else if (consume("-"))
         return new_node(ND_SUB, new_node_num(0), unary());
+    else if (consume("&"))
+        return new_node(ND_ADDR, unary(), NULL);
+    else if (consume("*"))
+        return new_node(ND_DEREF, unary(), NULL);
     return primary();
 }
 
@@ -323,7 +328,7 @@ bool valid(Node *node, int floor, ...)
 
     for (int i = 0; i < floor; i++)
     {
-        char *input = va_arg(ap, char*);
+        char *input = va_arg(ap, char *);
         if (strncmp(input, "lhs", 3) == 0)
         {
             if (node->lhs)
@@ -486,6 +491,20 @@ void gen(Node *node)
         printf("    pop rax\n");
 
         gen(node->rhs);
+        return;
+    }
+    if (node->kind == ND_ADDR)
+    {
+        gen_lvar(node->lhs);
+        return;
+    }
+    if (node->kind == ND_DEREF)
+    {
+        gen_lvar(node->lhs);
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
         return;
     }
 

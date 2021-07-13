@@ -29,3 +29,5 @@ assert 25 'main() { a = 0; b = 5; loop(a, b);} loop(a, b) { for (c = 0; c < b; c
 assert 5 'main() { a = 0; b = 5; loop(a, b); } loop(a, b) { for(;;) { if ( a >= b) { return a; } a = a + 1; } }'
 
 assert 5 'main() { a = 0; b = 5; c = 0; loop(a, b, c); } loop(a, b, c) { for(; c < b; c = c + 1) { a = a + 1; } return a;}'
+
+assert 3 'main() { x = 3; y = &x; return *y; }'
