@@ -33,6 +33,13 @@ typedef enum
     ND_DECLARE
 } NodeKind;
 
+typedef struct Type Type;
+
+struct Type {
+  enum { INT, PTR } ty;
+  struct Type *ptr_to;
+};
+
 typedef struct Node Node;
 
 struct Node
@@ -40,6 +47,7 @@ struct Node
     NodeKind kind;
     Node *lhs;
     Node *rhs;
+    Type *ty;
     char *func_name;
     int val;
     int offset;
@@ -50,6 +58,7 @@ Node *code[100];
 typedef enum
 {
     TK_RESERVED,
+    TK_NEW_IDENT,
     TK_IDENT,
     TK_NUM,
     TK_RETURN,
@@ -66,6 +75,7 @@ struct Token
 {
     TokenKind kind;
     Token *next;
+    Type *ty;
     int val;
     char *str;
     int len;
@@ -77,6 +87,7 @@ typedef struct LVar LVar;
 
 struct LVar {
     struct LVar *next;
+    Type *ty;
     char *name;
     int len;
     int offset;

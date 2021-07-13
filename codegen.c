@@ -235,22 +235,34 @@ Node *primary()
             }
         }
         else
-            node->kind = ND_LVAR;
-
-        LVar *lvar = find_lvar(tok);
-        if (lvar)
         {
-            node->offset = lvar->offset;
+            node->kind = ND_LVAR;
+        }
+        LVar *lvar;
+        if (tok->kind == TK_NEW_IDENT)
+        {
+                node->kind = ND_LVAR;
+                lvar = calloc(1, sizeof(LVar));
+                lvar->next = locals;
+                lvar->name = tok->str;
+                lvar->len = tok->len;
+                lvar->ty = tok->ty;
+                lvar->offset = locals->offset + 8;
+                node->offset = lvar->offset;
+                node->ty = tok->ty;
+                locals = lvar;
         }
         else
         {
-            lvar = calloc(1, sizeof(LVar));
-            lvar->next = locals;
-            lvar->name = tok->str;
-            lvar->len = tok->len;
-            lvar->offset = locals->offset + 8;
-            node->offset = lvar->offset;
-            locals = lvar;
+            lvar = find_lvar(tok);
+            if (lvar)
+            {
+                node->offset = lvar->offset;
+            }
+            else
+            {
+                error_at(tok->str, "定義されていない変数です");
+            }
         }
 
         if (judge("{"))
@@ -385,7 +397,10 @@ void gen(Node *node)
     }
     if (node->kind == ND_ASSIGN)
     {
-        gen_lvar(node->lhs);
+        if (node->lhs->kind == ND_DEREF)
+            gen(node->lhs->lhs);
+        else
+            gen_lvar(node->lhs);
         gen(node->rhs);
 
         printf("    pop rdi\n");
@@ -500,9 +515,8 @@ void gen(Node *node)
     }
     if (node->kind == ND_DEREF)
     {
-        gen_lvar(node->lhs);
+        gen(node->lhs);
         printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;

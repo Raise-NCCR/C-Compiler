@@ -30,6 +30,28 @@ Token *tokenize()
             continue;
         }
 
+        if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3]))
+        {
+            p += 4;
+            Type *ty = (Type *)calloc(1, sizeof(Type));
+            ty->ty = INT;
+            while (*p == '*')
+            {
+                Type *tmp = (Type *)calloc(1, sizeof(Type));
+                tmp->ty = PTR;
+                tmp->ptr_to = ty;
+                ty = tmp;
+                p++;
+            }
+            cur = new_token(TK_NEW_IDENT, cur, p, 0);
+            cur->ty = ty;
+            while (is_alnum(*p))
+            {
+                cur->len++;
+                p++;
+            }
+        }
+
         if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6]))
         {
             cur = new_token(TK_RETURN, cur, p, 6);
@@ -152,7 +174,7 @@ bool consume_kind(TokenKind kind)
 Token *consume_ident()
 {
     Token *tok = token;
-    if (tok->kind != TK_IDENT)
+    if (tok->kind != TK_IDENT && tok->kind != TK_NEW_IDENT)
         return NULL;
     token = token->next;
     return tok;
