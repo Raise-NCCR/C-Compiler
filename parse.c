@@ -33,18 +33,18 @@ Token *tokenize()
         if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3]))
         {
             p += 4;
-            Type *ty = (Type *)calloc(1, sizeof(Type));
-            ty->ty = INT;
+            Type *type = (Type *)calloc(1, sizeof(Type));
+            type->ty = INT;
             while (*p == '*')
             {
                 Type *tmp = (Type *)calloc(1, sizeof(Type));
                 tmp->ty = PTR;
-                tmp->ptr_to = ty;
-                ty = tmp;
+                tmp->ptr_to = type;
+                type = tmp;
                 p++;
             }
             cur = new_token(TK_NEW_IDENT, cur, p, 0);
-            cur->ty = ty;
+            cur->ty = type;
             while (is_alnum(*p))
             {
                 cur->len++;

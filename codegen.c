@@ -2,9 +2,11 @@
 
 static int jump_number = 0;
 static int arg_count = 0;
+int ptr_count = 0;
 static bool block = false;
 static char *arg_register[] = {"rdi", "rsi", "rdx", "rcx", "r8"};
 static LVar *func;
+Type *type = NULL;
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs)
 {
@@ -231,7 +233,7 @@ Node *primary()
                 else if (consume(")"))
                     break;
                 else
-                    node = new_node(ND_FUNC, node, primary());
+                    node = new_node(ND_FUNC, node, unary());
             }
         }
         else
@@ -257,6 +259,7 @@ Node *primary()
             lvar = find_lvar(tok);
             if (lvar)
             {
+                node->ty = lvar->ty;
                 node->offset = lvar->offset;
             }
             else
@@ -516,17 +519,36 @@ void gen(Node *node)
     if (node->kind == ND_DEREF)
     {
         gen(node->lhs);
+        ptr_count++;
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;
     }
 
+    type = node->lhs->ty;
+
     gen(node->lhs);
+
+    int size = 1;
+    if (type != NULL)
+    {
+        if (type->ty == PTR) {
+            while(ptr_count--) type = type->ptr_to;
+            if (type->ty == PTR && type->ptr_to->ty == INT) size = 4;
+            else if (type->ty == PTR && type->ptr_to->ty == PTR) size = 8;
+        }
+    }
+
     gen(node->rhs);
 
     printf("    pop rdi\n");
     printf("    pop rax\n");
+    printf("    imul rdi, %d\n", size);
+
+
+    ptr_count = 0;
+    type = NULL;
 
     if (node->kind == ND_EQU)
     {
