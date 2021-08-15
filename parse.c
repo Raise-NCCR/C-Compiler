@@ -30,6 +30,12 @@ Token *tokenize()
             continue;
         }
 
+        if (!strncmp(p, "sizeof", 6) && !is_alnum(p[6]))
+        {
+            cur = new_token(TK_SIZEOF, cur, p, 6);
+            p += 6;
+        }
+
         if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3]))
         {
             p += 4;
@@ -48,6 +54,16 @@ Token *tokenize()
             while (is_alnum(*p))
             {
                 cur->len++;
+                p++;
+            }
+            if (!strncmp(p, "[", 1) && isdigit(p[1]))
+            {
+                p++;
+                Type *new = (Type *)calloc(1, sizeof(Type));
+                new->ty = ARRAY;
+                new->array_size = strtol(p, &p, 10);
+                new->ptr_to = type;
+                cur->ty = new;
                 p++;
             }
         }

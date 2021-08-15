@@ -2,7 +2,7 @@
 
 static int jump_number = 0;
 static int arg_count = 0;
-int ptr_count = 0;
+int deref_count = 0;
 static bool block = false;
 static char *arg_register[] = {"rdi", "rsi", "rdx", "rcx", "r8"};
 static LVar *func;
@@ -214,6 +214,10 @@ Node *unary()
         return new_node(ND_ADDR, unary(), NULL);
     else if (consume("*"))
         return new_node(ND_DEREF, unary(), NULL);
+    else if (consume_kind(TK_SIZEOF))
+    {
+        node = unary();
+    }
     return primary();
 }
 
@@ -243,16 +247,31 @@ Node *primary()
         LVar *lvar;
         if (tok->kind == TK_NEW_IDENT)
         {
-                node->kind = ND_LVAR;
-                lvar = calloc(1, sizeof(LVar));
-                lvar->next = locals;
-                lvar->name = tok->str;
-                lvar->len = tok->len;
-                lvar->ty = tok->ty;
-                lvar->offset = locals->offset + 8;
-                node->offset = lvar->offset;
-                node->ty = tok->ty;
-                locals = lvar;
+            int offset = 0;
+            node->kind = ND_LVAR;
+            lvar = calloc(1, sizeof(LVar));
+            lvar->next = locals;
+            lvar->name = tok->str;
+            lvar->len = tok->len;
+            lvar->ty = tok->ty;
+            if (lvar->ty->ty == ARRAY)
+            {
+                if (lvar->ty->ptr_to->ty == INT) offset = 4 * ((lvar->ty->array_size / 2 + 1 )* 2);
+                if (lvar->ty->ptr_to->ty == PTR) offset = 8 * lvar->ty->array_size;
+            }
+            lvar->offset = locals->offset + 8 + offset;
+            node->offset = lvar->offset;
+            node->ty = tok->ty;
+            if (lvar->ty->ty == ARRAY)
+            {
+                node->ty->ty = PTR;
+                Node *tmp = calloc(1, sizeof(Node));
+                tmp->offset = node->offset - 8;
+                tmp->kind = ND_LVAR;
+                tmp = new_node(ND_ADDR, tmp, NULL);
+                node = new_node(ND_ASSIGN, node, tmp);
+            }
+            locals = lvar;
         }
         else
         {
@@ -519,7 +538,7 @@ void gen(Node *node)
     if (node->kind == ND_DEREF)
     {
         gen(node->lhs);
-        ptr_count++;
+        deref_count++;
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
@@ -534,11 +553,16 @@ void gen(Node *node)
     if (type != NULL)
     {
         if (type->ty == PTR) {
-            while(ptr_count--) type = type->ptr_to;
+            if (deref_count)
+            {
+                while(deref_count-- > 0) type = type->ptr_to;
+            }
             if (type->ty == PTR && type->ptr_to->ty == INT) size = 4;
             else if (type->ty == PTR && type->ptr_to->ty == PTR) size = 8;
         }
     }
+    deref_count = 0;
+    type = NULL;
 
     gen(node->rhs);
 
@@ -547,8 +571,6 @@ void gen(Node *node)
     printf("    imul rdi, %d\n", size);
 
 
-    ptr_count = 0;
-    type = NULL;
 
     if (node->kind == ND_EQU)
     {

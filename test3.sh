@@ -23,3 +23,5 @@ assert 3 'int main() { int x; int *y; y = &x; *y = 3; return x; }'
 assert 3 'int main() { int x; int *y; int **z; y = &x; z = &y; **z = 3; return x; }'
 
 assert 9 'int main() { int x; int *y; int **z; y = &x; z = &y; **z = 3; return x + *y + **z; }'
+
+assert 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }'

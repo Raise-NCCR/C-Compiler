@@ -36,8 +36,9 @@ typedef enum
 typedef struct Type Type;
 
 struct Type {
-  enum { INT, PTR } ty;
-  struct Type *ptr_to;
+    enum { INT, PTR, ARRAY } ty;
+    struct Type *ptr_to;
+    size_t array_size;
 };
 
 typedef struct Node Node;
@@ -67,6 +68,7 @@ typedef enum
     TK_WHILE,
     TK_FOR,
     TK_EOF,
+    TK_SIZEOF,
 } TokenKind;
 
 typedef struct Token Token;
