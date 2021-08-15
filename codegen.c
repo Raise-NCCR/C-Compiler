@@ -287,6 +287,13 @@ Node *primary()
             }
         }
 
+        if (consume("["))
+        {
+            node = new_node(ND_ADD, node, new_node_num(expect_number()));
+            node = new_node(ND_DEREF, node, NULL);
+            expect("]");
+        }
+
         if (judge("{"))
         {
             node = new_node(ND_DECLARE, node, stmt());
