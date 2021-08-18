@@ -13,8 +13,20 @@ int main(int argc, char **argv)
     program();
 
     printf(".intel_syntax noprefix\n");
-    printf(".globl main\n");
 
+    if (globals->name != NULL)
+    {
+        printf(".data\n");
+        for (LVar *var = globals; var->name != NULL; var = var->next)
+        {
+            char *name = malloc(globals->len + 1);
+            strncpy(name, globals->name, globals->len);
+            printf(".comm %s,%d,%d\n", name, globals->size, globals->size);
+            free(name);
+        }
+    }
+    printf(".text\n");
+    printf(".globl main\n");
     for (int i = 0; code[i]; i++)
     {
         gen(code[i]);

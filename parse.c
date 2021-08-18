@@ -229,7 +229,37 @@ LVar *find_lvar(Token *tok)
     return NULL;
 }
 
+LVar *find_global_lvar(Token *tok)
+{
+    for (LVar *var = globals; var; var = var->next)
+    {
+        if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+            return var;
+    }
+    return NULL;
+}
+
+LVar *find_global_lvar_offset(int offset)
+{
+    for (LVar *var = globals; var; var = var->next)
+    {
+        if (var->offset == offset)
+            return var;
+    }
+    return NULL;
+}
+
 int is_alnum(char c)
 {
     return (isalpha(c) || isdigit(c) || c == '_');
+}
+
+bool is_global(Node *node)
+{
+    for (Node *tmp = node; tmp->lhs; tmp = tmp->lhs)
+    {
+        if (tmp->kind == ND_GLOBAL)
+            return true;
+    }
+    return false;
 }

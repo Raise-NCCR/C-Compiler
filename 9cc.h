@@ -30,7 +30,8 @@ typedef enum
     ND_FOR,
     ND_BLOCK,
     ND_FUNC,
-    ND_DECLARE
+    ND_DECLARE,
+    ND_GLOBAL
 } NodeKind;
 
 typedef struct Type Type;
@@ -93,9 +94,11 @@ struct LVar {
     char *name;
     int len;
     int offset;
+    int size;
 };
 
 LVar *locals;
+LVar *globals;
 
 char *user_input;
 
@@ -123,6 +126,9 @@ bool at_eof();
 Token *new_token(TokenKind kind, Token *cur, char *str, int len);
 Token *tokenize();
 LVar *find_lvar(Token *tok);
+LVar *find_global_lvar(Token *tok);
+LVar *find_global_lvar_offset(int offset);
 int is_alnum(char c);
+bool is_global(Node *node);
 
 #endif

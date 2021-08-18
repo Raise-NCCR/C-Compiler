@@ -2,8 +2,10 @@
 
 static int jump_number = 0;
 static int arg_count = 0;
+static int global_lvar_offset = 1;
 int deref_count = 0;
 static bool block = false;
+static bool is_in_block = false;
 static char *arg_register[] = {"rdi", "rsi", "rdx", "rcx", "r8"};
 static LVar *func;
 Type *type = NULL;
@@ -29,6 +31,7 @@ void program()
 {
     int i = 0;
     locals = calloc(1, sizeof(LVar));
+    globals = calloc(1, sizeof(LVar));
     while (!at_eof())
         code[i++] = stmt();
     code[i] = NULL;
@@ -52,6 +55,7 @@ Node *stmt()
             if (consume("}"))
             {
                 block = true;
+                is_in_block = false;
                 return node;
             }
             else
@@ -232,6 +236,7 @@ Node *primary()
             node->kind = ND_FUNC;
             for (;;)
             {
+                is_in_block = true;
                 if (consume(","))
                     continue;
                 else if (consume(")"))
@@ -245,7 +250,7 @@ Node *primary()
             node->kind = ND_LVAR;
         }
         LVar *lvar;
-        if (tok->kind == TK_NEW_IDENT)
+        if (tok->kind == TK_NEW_IDENT && is_in_block)
         {
             int offset = 0;
             node->kind = ND_LVAR;
@@ -256,8 +261,10 @@ Node *primary()
             lvar->ty = tok->ty;
             if (lvar->ty->ty == ARRAY)
             {
-                if (lvar->ty->ptr_to->ty == INT) offset = 4 * ((lvar->ty->array_size / 2 + 1 )* 2);
-                if (lvar->ty->ptr_to->ty == PTR) offset = 8 * lvar->ty->array_size;
+                if (lvar->ty->ptr_to->ty == INT)
+                    offset = 4 * ((lvar->ty->array_size / 2 + 1) * 2);
+                if (lvar->ty->ptr_to->ty == PTR)
+                    offset = 8 * lvar->ty->array_size;
             }
             lvar->offset = locals->offset + 8 + offset;
             node->offset = lvar->offset;
@@ -273,6 +280,35 @@ Node *primary()
             }
             locals = lvar;
         }
+        else if (tok->kind == TK_NEW_IDENT && !is_in_block && !judge("("))
+        {
+            lvar = calloc(1, sizeof(LVar));
+            node->kind = ND_GLOBAL;
+            lvar->next = globals;
+            lvar->name = tok->str;
+            lvar->len = tok->len;
+            lvar->ty = tok->ty;
+            lvar->offset = global_lvar_offset;
+            global_lvar_offset++;
+            lvar->size = 4;
+            node->ty = lvar->ty;
+            if (lvar->ty->ty == ARRAY)
+            {
+                if (lvar->ty->ptr_to->ty == INT)
+                    lvar->size = 4 * lvar->ty->array_size;
+                if (lvar->ty->ptr_to->ty == PTR)
+                    lvar->size = 8 * lvar->ty->array_size;
+                node->ty->ty = PTR;
+            }
+            else if (lvar->ty->ty == PTR) lvar->size = 8;
+            globals = lvar;
+            if (consume("["))
+            {
+                expect_number();
+                consume("]");
+            }
+            return node;
+        }
         else
         {
             lvar = find_lvar(tok);
@@ -283,7 +319,13 @@ Node *primary()
             }
             else
             {
-                error_at(tok->str, "定義されていない変数です");
+                lvar = find_global_lvar(tok);
+                if (lvar)
+                {
+                    node->ty = lvar->ty;
+                    node->offset = -1 * lvar->offset;
+                }
+                else error_at(tok->str, "定義されていない変数です");
             }
         }
 
@@ -296,6 +338,7 @@ Node *primary()
 
         if (judge("{"))
         {
+            is_in_block = true;
             node = new_node(ND_DECLARE, node, stmt());
             node->offset = lvar->offset;
         }
@@ -317,9 +360,22 @@ void gen_lvar(Node *node)
     if (node->kind != ND_LVAR)
         perror("代入の左辺値が変数ではありません");
 
-    printf("    mov rax, rbp\n");
-    printf("    sub rax, %d\n", node->offset);
+    if (node->offset < 0)
+    {
+        int offset = -1 * node->offset;
+        LVar *lvar = find_global_lvar_offset(offset);
+        char *name = malloc(lvar->len + 1);
+        strncpy(name, lvar->name, lvar->len);
+        printf("    lea rax, %s[rip]\n", name);
+        free(name);
+    }
+    else
+    {
+        printf("    mov rax, rbp\n");
+        printf("    sub rax, %d\n", node->offset);
+    }
     printf("    push rax\n");
+    return ;
 }
 
 char *find_func(Node *node)
@@ -544,6 +600,8 @@ void gen(Node *node)
     }
     if (node->kind == ND_DEREF)
     {
+        if (is_global(node))
+            return;
         gen(node->lhs);
         deref_count++;
         printf("    pop rax\n");
@@ -551,21 +609,30 @@ void gen(Node *node)
         printf("    push rax\n");
         return;
     }
+    if (node->kind == ND_GLOBAL)
+    {
+        return;
+    }
 
     type = node->lhs->ty;
 
-    gen(node->lhs);
+    if (node->lhs->offset < 0) gen_lvar(node->lhs);
+    else gen(node->lhs);
 
     int size = 1;
     if (type != NULL)
     {
-        if (type->ty == PTR) {
+        if (type->ty == PTR)
+        {
             if (deref_count)
             {
-                while(deref_count-- > 0) type = type->ptr_to;
+                while (deref_count-- > 0)
+                    type = type->ptr_to;
             }
-            if (type->ty == PTR && type->ptr_to->ty == INT) size = 4;
-            else if (type->ty == PTR && type->ptr_to->ty == PTR) size = 8;
+            if (type->ty == PTR && type->ptr_to->ty == INT)
+                size = 4;
+            else if (type->ty == PTR && type->ptr_to->ty == PTR)
+                size = 8;
         }
     }
     deref_count = 0;
@@ -576,8 +643,6 @@ void gen(Node *node)
     printf("    pop rdi\n");
     printf("    pop rax\n");
     printf("    imul rdi, %d\n", size);
-
-
 
     if (node->kind == ND_EQU)
     {
