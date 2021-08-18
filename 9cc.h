@@ -31,13 +31,21 @@ typedef enum
     ND_BLOCK,
     ND_FUNC,
     ND_DECLARE,
-    ND_GLOBAL
+    ND_GLOBAL,
+    ND_STRING,
 } NodeKind;
 
 typedef struct Type Type;
 
-struct Type {
-    enum { INT, CHAR, PTR, ARRAY } ty;
+struct Type
+{
+    enum
+    {
+        INT,
+        CHAR,
+        PTR,
+        ARRAY
+    } ty;
     struct Type *ptr_to;
     size_t array_size;
 };
@@ -70,6 +78,7 @@ typedef enum
     TK_FOR,
     TK_EOF,
     TK_SIZEOF,
+    TK_STRING,
 } TokenKind;
 
 typedef struct Token Token;
@@ -88,7 +97,8 @@ Token *token;
 
 typedef struct LVar LVar;
 
-struct LVar {
+struct LVar
+{
     struct LVar *next;
     Type *ty;
     char *name;
@@ -99,6 +109,7 @@ struct LVar {
 
 LVar *locals;
 LVar *globals;
+LVar *strings;
 
 char *user_input;
 
@@ -130,5 +141,6 @@ LVar *find_global_lvar(Token *tok);
 LVar *find_global_lvar_offset(int offset);
 int is_alnum(char c);
 bool is_global(Node *node);
+bool check(char op);
 
 #endif

@@ -3,6 +3,7 @@
 static int jump_number = 0;
 static int arg_count = 0;
 static int global_lvar_offset = 1;
+static int string_lvar_offset = 0;
 int deref_count = 0;
 static bool block = false;
 static bool is_in_block = false;
@@ -32,6 +33,7 @@ void program()
     int i = 0;
     locals = calloc(1, sizeof(LVar));
     globals = calloc(1, sizeof(LVar));
+    strings = calloc(1, sizeof(LVar));
     while (!at_eof())
         code[i++] = stmt();
     code[i] = NULL;
@@ -300,7 +302,8 @@ Node *primary()
                     lvar->size = 8 * lvar->ty->array_size;
                 node->ty->ty = PTR;
             }
-            else if (lvar->ty->ty == PTR) lvar->size = 8;
+            else if (lvar->ty->ty == PTR)
+                lvar->size = 8;
             globals = lvar;
             if (consume("["))
             {
@@ -325,7 +328,8 @@ Node *primary()
                     node->ty = lvar->ty;
                     node->offset = -1 * lvar->offset;
                 }
-                else error_at(tok->str, "定義されていない変数です");
+                else
+                    error_at(tok->str, "定義されていない変数です");
             }
         }
 
@@ -352,6 +356,21 @@ Node *primary()
         return node;
     }
 
+    if (check('"'))
+    {
+        LVar *lvar = calloc(1, sizeof(LVar));
+        lvar->next = strings;
+        lvar->name = malloc(token->len);
+        strncpy(lvar->name, token->str + 1, token->len);
+        lvar->offset = string_lvar_offset;
+        string_lvar_offset++;
+        strings = lvar;
+        Node *node = new_node(ND_STRING, NULL, NULL);
+        node->offset = lvar->offset;
+        token = token->next;
+        return node;
+    }
+
     return new_node_num(expect_number());
 }
 
@@ -375,7 +394,7 @@ void gen_lvar(Node *node)
         printf("    sub rax, %d\n", node->offset);
     }
     printf("    push rax\n");
-    return ;
+    return;
 }
 
 char *find_func(Node *node)
@@ -455,8 +474,10 @@ void gen(Node *node)
     {
         gen_lvar(node);
         printf("    pop rax\n");
-        if (node->ty->ty == CHAR) printf("movsx ecx, BYTE PTR [rax]\n");
-        else printf("    mov rax, [rax]\n");
+        if (node->ty->ty == CHAR)
+            printf("movsx ecx, BYTE PTR [rax]\n");
+        else
+            printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;
     }
@@ -615,8 +636,10 @@ void gen(Node *node)
         gen(node->lhs);
         deref_count++;
         printf("    pop rax\n");
-        if (node->lhs->ty && node->lhs->ty->ty == CHAR) printf("movsx ecx, BYTE PTR [rax]\n");
-        else printf("    mov rax, [rax]\n");
+        if (node->lhs->ty && node->lhs->ty->ty == CHAR)
+            printf("movsx ecx, BYTE PTR [rax]\n");
+        else
+            printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;
     }
@@ -624,11 +647,19 @@ void gen(Node *node)
     {
         return;
     }
+    if (node->kind == ND_STRING)
+    {
+        printf("    lea rax, .LC%d\n", node->offset);
+        printf("    push rax\n");
+        return;
+    }
 
     type = node->lhs->ty;
 
-    if (node->lhs->offset < 0) gen_lvar(node->lhs);
-    else gen(node->lhs);
+    if (node->lhs->offset < 0)
+        gen_lvar(node->lhs);
+    else
+        gen(node->lhs);
 
     int size = 1;
     if (type != NULL)

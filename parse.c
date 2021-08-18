@@ -84,7 +84,7 @@ Token *tokenize()
                 p++;
             }
         }
-        
+
         if (strncmp(p, "char", 4) == 0 && !is_alnum(p[4]))
         {
             p += 5;
@@ -115,6 +115,15 @@ Token *tokenize()
                 cur->ty = new;
                 p++;
             }
+        }
+
+        if (startswith(p, "\""))
+        {
+            cur = new_token(TK_STRING, cur, p, 0);
+            for (++p; *p != '"'; p++)
+                cur->len++;
+            p++;
+            continue;
         }
 
         if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6]))
@@ -224,6 +233,12 @@ bool judge(char *op)
         memcmp(token->str, op, token->len))
         return false;
     return true;
+}
+
+bool check(char op)
+{
+    if (*(token->str) == op) return true;
+    else return false;
 }
 
 bool consume_kind(TokenKind kind)

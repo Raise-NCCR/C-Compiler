@@ -25,7 +25,18 @@ int main(int argc, char **argv)
             free(name);
         }
     }
+
     printf(".text\n");
+
+    if (strings->name != NULL)
+    {
+        for (LVar *var = strings; var->name != NULL; var = var->next)
+        {
+            printf(".LC%d:\n", var->offset);
+            printf("    .string \"%s\"\n", var->name);
+        }
+    }
+
     printf(".globl main\n");
     for (int i = 0; code[i]; i++)
     {

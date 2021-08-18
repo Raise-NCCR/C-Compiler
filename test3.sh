@@ -4,7 +4,7 @@ assert() {
     input="$2"
 
     ./9cc "$input" > tmp.s
-    cc -o tmp tmp.s
+    cc -static -o tmp tmp.s
     ./tmp
     actual="$?"
 
@@ -33,3 +33,5 @@ assert 1 'int x; int main() { x = 1; return x; }'
 assert 3 'int x[2]; int main() { x[0] = 1; x[1] = 2; return x[0] + x[1]; }'
 
 assert 3 'int main() { char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; }'
+
+assert 104 'int main() { char *string; string = "hoge"; return string[0]; }'
