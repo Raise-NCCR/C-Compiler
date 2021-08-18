@@ -31,3 +31,5 @@ assert 3 'int main() { int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return *p + 
 assert 1 'int x; int main() { x = 1; return x; }'
 
 assert 3 'int x[2]; int main() { x[0] = 1; x[1] = 2; return x[0] + x[1]; }'
+
+assert 3 'int main() { char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; }'

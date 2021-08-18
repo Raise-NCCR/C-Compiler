@@ -30,6 +30,23 @@ Token *tokenize()
             continue;
         }
 
+        if (strncmp(p, "//", 2) == 0)
+        {
+            p += 2;
+            while (*p != '\n')
+                p++;
+            continue;
+        }
+
+        if (strncmp(p, "/*", 2) == 0)
+        {
+            char *q = strstr(p + 2, "*/");
+            if (!q)
+                error_at(p, "コメントが閉じられていません");
+            p = q + 2;
+            continue;
+        }
+
         if (!strncmp(p, "sizeof", 6) && !is_alnum(p[6]))
         {
             cur = new_token(TK_SIZEOF, cur, p, 6);
@@ -41,6 +58,38 @@ Token *tokenize()
             p += 4;
             Type *type = (Type *)calloc(1, sizeof(Type));
             type->ty = INT;
+            while (*p == '*')
+            {
+                Type *tmp = (Type *)calloc(1, sizeof(Type));
+                tmp->ty = PTR;
+                tmp->ptr_to = type;
+                type = tmp;
+                p++;
+            }
+            cur = new_token(TK_NEW_IDENT, cur, p, 0);
+            cur->ty = type;
+            while (is_alnum(*p))
+            {
+                cur->len++;
+                p++;
+            }
+            if (!strncmp(p, "[", 1) && isdigit(p[1]))
+            {
+                p++;
+                Type *new = (Type *)calloc(1, sizeof(Type));
+                new->ty = ARRAY;
+                new->array_size = strtol(p, &p, 10);
+                new->ptr_to = type;
+                cur->ty = new;
+                p++;
+            }
+        }
+        
+        if (strncmp(p, "char", 4) == 0 && !is_alnum(p[4]))
+        {
+            p += 5;
+            Type *type = (Type *)calloc(1, sizeof(Type));
+            type->ty = CHAR;
             while (*p == '*')
             {
                 Type *tmp = (Type *)calloc(1, sizeof(Type));

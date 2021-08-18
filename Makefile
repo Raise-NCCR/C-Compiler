@@ -1,9 +1,10 @@
 CFLAGS=-std=c11 -g -static
-SRCS=$(wildcard *.c)
+SRCS=main.c codegen.c parse.c
 OBJS=$(SRCS:.c=.o)
 
 9cc: $(OBJS)
 	$(CC) -g -o 9cc $(OBJS) $(LDFLAGS)
+	rm *.o
 
 $(OBJS): 9cc.h
 

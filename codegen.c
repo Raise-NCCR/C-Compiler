@@ -455,7 +455,8 @@ void gen(Node *node)
     {
         gen_lvar(node);
         printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
+        if (node->ty->ty == CHAR) printf("movsx ecx, BYTE PTR [rax]\n");
+        else printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;
     }
@@ -490,8 +491,17 @@ void gen(Node *node)
 
         printf("    pop rdi\n");
         printf("    pop rax\n");
-        printf("    mov [rax], rdi\n");
-        printf("    push rdi\n");
+        if (node->lhs->ty && node->lhs->ty->ty == CHAR)
+        {
+            printf("    mov rcx, rdi\n");
+            printf("    mov [rax], cl\n");
+            printf("    push rcx\n");
+        }
+        else
+        {
+            printf("    mov [rax], rdi\n");
+            printf("    push rdi\n");
+        }
         return;
     }
     if (node->kind == ND_RETURN)
@@ -605,7 +615,8 @@ void gen(Node *node)
         gen(node->lhs);
         deref_count++;
         printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
+        if (node->lhs->ty && node->lhs->ty->ty == CHAR) printf("movsx ecx, BYTE PTR [rax]\n");
+        else printf("    mov rax, [rax]\n");
         printf("    push rax\n");
         return;
     }
