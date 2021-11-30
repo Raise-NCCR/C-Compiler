@@ -44,7 +44,8 @@ struct Type
         INT,
         CHAR,
         PTR,
-        ARRAY
+        ARRAY,
+        GENERIC,
     } ty;
     struct Type *ptr_to;
     size_t array_size;
@@ -111,6 +112,7 @@ LVar *locals;
 LVar *globals;
 LVar *strings;
 
+char *file_name;
 char *user_input;
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
@@ -126,7 +128,7 @@ Node *mul();
 Node *unary();
 Node *primary();
 void gen(Node *node);
-void error_at(char *loc, char *fmt, ...);
+void error_at(char *loc, char *fmt);
 bool consume(char *op);
 bool judge(char *op);
 bool consume_kind(TokenKind kind);

@@ -115,6 +115,40 @@ Token *tokenize()
                 cur->ty = new;
                 p++;
             }
+            continue;
+        }
+
+        if (strncmp(p, "T", 1) == 0 && !is_alnum(p[1]))
+        {
+            p += 2;
+            Type *type = (Type *)calloc(1, sizeof(Type));
+            type->ty = GENERIC;
+            while (*p == '*')
+            {
+                Type *tmp = (Type *)calloc(1, sizeof(Type));
+                tmp->ty = PTR;
+                tmp->ptr_to = type;
+                type = tmp;
+                p++;
+            }
+            cur = new_token(TK_NEW_IDENT, cur, p, 0);
+            cur->ty = type;
+            while (is_alnum(*p))
+            {
+                cur->len++;
+                p++;
+            }
+            if (!strncmp(p, "[", 1) && isdigit(p[1]))
+            {
+                p++;
+                Type *new = (Type *)calloc(1, sizeof(Type));
+                new->ty = ARRAY;
+                new->array_size = strtol(p, &p, 10);
+                new->ptr_to = type;
+                cur->ty = new;
+                p++;
+            }
+            continue;
         }
 
         if (startswith(p, "\""))
@@ -202,17 +236,27 @@ Token *tokenize()
     return head.next;
 }
 
-void error_at(char *loc, char *fmt, ...)
+void error_at(char *loc, char *msg)
 {
-    va_list ap;
-    va_start(ap, fmt);
+    char *line = loc;
+    while (user_input < line && line[-1] != '\n')
+        line--;
 
-    int pos = loc - user_input;
-    fprintf(stderr, "%s\n", user_input);
-    fprintf(stderr, "%*s", pos, " ");
-    fprintf(stderr, "^ ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
+    char *end = loc;
+    while (*end != '\n')
+        end++;
+
+    int line_num = 1;
+    for (char *p = user_input; p < line; p++)
+        if (*p == '\n')
+            line_num++;
+
+    int indent = fprintf(stderr, "%s:%d: ", file_name, line_num);
+    fprintf(stderr, "%.*s\n", (int)(end - line), line);
+
+    int pos = loc - line + indent;
+    fprintf(stderr, "%*s", pos, "");
+    fprintf(stderr, "^ %s\n", msg);
     exit(1);
 }
 
@@ -237,8 +281,10 @@ bool judge(char *op)
 
 bool check(char op)
 {
-    if (*(token->str) == op) return true;
-    else return false;
+    if (*(token->str) == op)
+        return true;
+    else
+        return false;
 }
 
 bool consume_kind(TokenKind kind)
@@ -265,7 +311,7 @@ void expect(char *op)
     if (token->kind != TK_RESERVED ||
         strlen(op) != token->len ||
         memcmp(token->str, op, token->len))
-        error_at(token->str, "'%s'ではありません", op);
+        error_at(token->str, "予期しない記号です");
     token = token->next;
 }
 
